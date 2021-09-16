@@ -26,4 +26,4 @@ RUN npm rebuild
 
 CMD ["node", "webserver.js"]
 
-#CMD ["sleep", "infinity"]
+#CMD ["sleep", "infinity"] use this line for testing purposes

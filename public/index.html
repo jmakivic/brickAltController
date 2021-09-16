@@ -2,10 +2,10 @@
 <html>
     <head>
       
-       <!----<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/addons/p5.sound.min.js"></script>-->
+        //linking p5 library
         <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.0.3/socket.io.js"></script> 
         <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
-        <!--<script src = "./../sprite.js"></script>-->
+        
    
         <link rel="stylesheet" type="text/css" href="style.css">
 
@@ -15,8 +15,11 @@
 
        
             <script>
+                        //Sprite class is used for creating sprites in the game. It allows you to set it's x/y location and how fast the animation moves
+                        //it takes in an animation array which contains one frame of the animation in each of its indices. 
+                        //if the sprite moves, players can determine how fast it moves across the canvas. This is determined using the isMoving variable, a boolean which determines whether the sprite moves or not
                         class Sprite {
-                            constructor(animation, x, y, speed) {
+                            constructor(animation, x, y, speed, isMoving) {
                                 this.x = x;
                                 this.y = y;
                                 this.animation = animation;
@@ -24,6 +27,7 @@
                                 this.len = this.animation.length;
                                 this.speed = speed;
                                 this.index = 0;
+                                this.movement = isMoving;
                             }
         
                             show() {
@@ -34,7 +38,11 @@
         
                             animate() {
                                 this.index += this.speed;
-                                //this.x += this.speed * 15;
+
+                                if(this.movement == true){
+                                    this.x += this.speed * 50;
+                                }
+                              
                         
                                 if (this.x > width) {
                                     this.x = -this.w;
@@ -42,181 +50,279 @@
                             }
                         }
 
-
-                        let socket =io('ws://192.168.1.8:8080',{
+                        //initializing the websocket
+                        //make this socket listen to your device's local ip on port 8080
+                        let socket =io('ws://your.devices.local.ip:8080',{
                             transports: ["websocket"],
-                            pingInterval: 60000,
+                            pingInterval: 30000,
                             pingTimeout: 1000
                         });
 
-                        //let socket = io.connect('http://192.168.1.8:8080');
-                   
-                  
-
+                        
                         let spritesheet;
                         let data;
                         let animation = [];
                         let sprites = [];
+                        let symbol1_1;
+                        let symbol1_2;
+                        let symbol1_3;
+
+                        let bg_spritedata;
+                        let bg_spritesheet;
+                        let bg_sprites = [];
+                        let bg_animation = [];
+                   
+                        let running_spritesheet;
+                        let running_spritedata;
+                        let running_animation=[];
+                        let running_sprites =[];
+
+                        let close;
+                        let almost;
+                        let instructions;
 
                         let input_speed = 2;
 
-
                         function preload(){
+                            //loading sprite sheet which is a png file with densely packed images of each frame in the animation. 
+                            //loading a JSON with the x and y coordinates and width and height of each animation frame. This indicates where it is located on the sprite sheet. 
                             spritedata = loadJSON('spritesheet_1.json');
                             spritesheet = loadImage('spritesheet_1.png');
+
+                            symbol1_1 = loadImage('symbol_detail_1.png');
+                            symbol1_2 = loadImage('symbol_detail_2.png');
+                            symbol1_3 = loadImage('symbol_detail_3.png');
+
+
+                            bg_spritedata = loadJSON('bg_sprite_sheet-0.json');
+                            bg_spritesheet = loadImage('bg_sprite_sheet-0.png');
+
+                            running_spritedata = loadJSON('running_spritesheet.json');
+                            running_spritesheet = loadImage('running_spritesheet.png');
+                  
+
+                            close = loadImage('close.png');
+                            almost = loadImage('almost.png');
+                            instructions = loadImage('instructions.png');
 
                         }
 
                         function setup(){
 
+                            //the canvas size determine the game space on the screen
+                            createCanvas(1200,900);
                             
-                            createCanvas(600,900);
-                    
 
 
                             background(220)
                             fill(0, 102, 153);
 
+                            //This uses the information from the spritedata JSON to find the location of each animation frame and push it to an animation array, which stores each animation frame in its indices. 
                             let frames = spritedata.frames;
                             for (let i = 0; i < frames.length; i++) {
                                 let pos = frames[i].frame;
                                 let img = spritesheet.get(pos.x, pos.y, pos.w, pos.h);
                                 animation.push(img);
                             }
-  
+                            
+                            //this uses the animation array to create a sprite out of each animation frame. These individual sprites are stored in a sprite array. We will later loop through the sprite array and show each sprite in game space. This will create
+                            //the illusion of a single animated sprite. 
                             for (let i = 0; i < animation.length; i++) {
 
-                                sprites[i] = new Sprite(animation, width*0.5-20, 360, 0.1);
+                                sprites[i] = new Sprite(animation, 600+(600*0.5-20), 360, 0.1,false);
                             }
 
-                        
+                            //setup frame animatio for the background. this follows the same process as described above
+
+                            let bg_frames = bg_spritedata.frames;
+                            for (let i = 0; i < bg_frames.length; i++) {
+                                let pos = bg_frames[i].frame;
+                                let img = bg_spritesheet.get(pos.x, pos.y, pos.w, pos.h);
+                                bg_animation.push(img);
+                            }
+  
+                            for (let i = 0; i < bg_animation.length; i++) {
+
+                                bg_sprites[i] = new Sprite(bg_animation, 0, 0, 0.1,false);
+                            }
+
+                            //running animation
+                            let running_frames = running_spritedata.frames;
+                            
+                            for (let i = 0; i < running_frames.length; i++) {
+                                let pos = running_frames[i].frame;
+                                let img = running_spritesheet.get(pos.x, pos.y, pos.w, pos.h);
+                                running_animation.push(img);
+                            }
+  
+                            for (let i = 0; i < running_animation.length; i++) {
+
+                                running_sprites[i] = new Sprite(running_animation, 300, 650, 0.1,true);
+                            }
+
+                            //The socket.on function listens to incoming data from the websocket and changes the visuals on the screen accordingly
+
+                            //this section takes in acceleration data from the sensor and displays the rate of acceleration on the screeen
                             socket.on('accel', accel =>{
                             
                                 textAlign(LEFT);
                                 fill(0,0,0);
-                                rect(width*0.25-10, 50, 140,40);
+                                rect(600+(600*0.25-10), 50, 140,40);
                                 fill(0, 102, 153);
-                                text("Acceleration", width * 0.25, 60); 
-                                text(accel, width * 0.25, 80);
+                                text("Acceleration", 600+(600 * 0.25), 60); 
+                                text(accel, 600+(600 * 0.25), 80);
                                 
                             
                             });
 
+                            //this section takes in inclination data from the sensor and displays it on the screen
                             socket.on('incl', incl=>{
                             
                                 textAlign(LEFT);
                                 fill(0,0,0);
-                                rect(width*0.25-10, 90, 140,40);
+                                rect(600+(600*0.25-10), 90, 140,40);
                                 fill(0, 102, 153);
-                                text("Inclination", width * 0.25, 100);
-                                text(incl, width * 0.25, 120);
-                                fill(0);
-
-
-
-                                //lerp color according to inclination
+                                text("Inclination", 600+(600 * 0.25), 100);
+                                text(incl, 600+(600 * 0.25), 120);
+                              
                                 value=incl;
-                                let mappedValue = map(value, -180, 180, 0, 255);
-                                console.log(mappedValue);
-
-                                fill(255,0,mappedValue);
-                                rect(10, 200, 180, 20, 10);
+                       
 
                             });
 
+                            //this section takes in orientation data from the sensor and displays it on the screen 
                             socket.on('orient', orient=>{
 
                             
                                 textAlign(LEFT);
                                 fill(0,0,0);
-                                rect(width*0.25-10, 140, 140,40);
+                                rect(600+(600*0.25-10), 140, 140,40);
                                 fill(0, 102, 153);
-                                text("Orientation", width * 0.25, 150);
-                                text(orient, width * 0.25, 170);
+                                text("Orientation",600+(600 * 0.25), 150);
+                                text(orient, 600+(600* 0.25), 170);
 
                             });
-
+                            //this section takes in the sensor's pitch and displays it on the screen
                             socket.on('pitch', pitch=>{
 
                                 textAlign(LEFT);
                                 fill(0,0,0);
-                                rect(width*0.5-10, 50, 140,40);
+                                rect(600+(600*0.5-10), 50, 140,40);
                                 fill(0, 102, 153);
-                                text("Pitch", width * 0.5, 60);
-                                text(pitch, width * 0.5, 80);
+                                text("Pitch",600+(600 * 0.5), 60);
+                                text(pitch, 600+(600 * 0.5), 80);
 
                             });
-
+                            //this section takes in the sensor's roll and displays it on the screen
                             socket.on('roll', roll=>{
 
                                 textAlign(LEFT);
                                 fill(0,0,0);
-                                rect(width*0.5-10, 90, 140,40);
+                                rect(600+(600*0.5-10), 90, 140,40);
                                 fill(0, 102, 153);
-                                text("Roll", width * 0.5, 100);
-                                text(roll, width * 0.5, 120);
+                                text("Roll", 600+(600 * 0.5), 100);
+                                text(roll, 600+(600 * 0.5), 120);
 
                             });
 
-                            
+                            //this section takes in the sensors rotation along the x axis and displays it on the screen
                             socket.on('xPos', xPos =>{
                             
                                 textAlign(LEFT);
                                 fill(0,0,0);
-                                rect(width*0.75-10, 50, 140,40);
+                                rect(600+(600*0.75-10), 50, 140,40);
                                 fill(0, 102, 153);
-                                text("X", width * 0.75, 60); 
-                                text(xPos, width * 0.75, 80);
-
-                                let value=xPos;
-                                let mappedValue = map(value, -1, 1, 20, width-110);
-                                console.log(mappedValue);
-                                fill(220);
-                                stroke(220);
-                                rect(0, 280, width, 55, 10);
-                                fill(20,255,20);
-                                rect(mappedValue, 280, 105, 55, 10);
+                                text("X", 600+(600 * 0.75), 60); 
+                                text(xPos, 600+(600 * 0.75), 80);
 
                                 
                             });
-
+                            
+                            //this section takes in the sensors rotation along the y axis and displays it on the screen
                             socket.on('yPos', yPos=>{
 
                                 textAlign(LEFT);
                                 fill(0,0,0);
-                                rect(width*0.75-10, 90, 140,40);
+                                rect(600+(600*0.75-10), 90, 140,40);
                                 fill(0, 102, 153);
-                                text("Y", width * 0.75, 100);
-                                text(yPos, width * 0.75, 120);
-
-                                //let default_speed = 0.2;
-
-                            
+                                text("Y", 600+(600* 0.75), 100);
+                                text(yPos,600+(600 * 0.75), 120);
+             
                                 fill(220);
-                                rect(width*0.5-30, 360, 200,510);
+                                rect(600+(600*0.5-30), 360, 200,510);
+                            
 
-                                 
+                                 //the rotation of the y axis determine the speed of the rotating cat sprite. Rotating it one way will slow down the rate of the animation, while rotating it the other way will speed it up 
                                 for(let sprite of sprites){
                                     let mapped_speed = map(yPos,-1,1,0.00001,0.2);
                                     input_speed = mapped_speed;
-                                    console.log(mapped_speed);
                                     sprite.speed = mapped_speed; 
                                     sprite.show();
                                     sprite.animate();
+                                    //the sockets sends the speed of the rotating sprite to the server. This speed will be used to determine the level of the intensity of the vibration from the vibration motors. 
                                     socket.emit('speed',input_speed );
-                                }
-
+                                }             
+                             
                             });
 
+                            //this section takes in the sensors rotation along the z axis and displays it on the screen
                             socket.on('zPos', zPos=>{
                             
                                 textAlign(LEFT);
                                 fill(0,0,0);
-                                rect(width*0.75-10, 140, 140,40);
+                                rect(600+(600*0.75-10), 140, 140,40);
                                 fill(0, 102, 153);
-                                text("Z", width * 0.75, 150);
-                                text(zPos, width * 0.75, 170);
+                                text("Z", 600+(600 * 0.75), 150);
+                                text(zPos, 600 +(600* 0.75), 170);
 
+                            });
+
+                            //this section takes in an array which contains the sensors and x and y rotation
+                            socket.on('coors',coors=>{
+                  
+                                fill(220);
+                                rect(0,0,700,height);
+                                //the rotation along the x axis affects the animation speed of the background
+                                for(let sprite of bg_sprites){
+                                    let mapped_speed = map(coors[0],-1,1,0.00001,0.2);
+                                    input_speed = mapped_speed;
+                            
+                                    sprite.speed = mapped_speed; 
+                                    sprite.show();
+                                    sprite.animate();
+           
+                                }
+
+                               
+                                //the rotation along the y axis affects how quickly the small running sprite moves across the screen 
+                                for(let sprite of running_sprites){
+                                    let mapped_speed = map(coors[1],-1,1,0.00001,0.2);
+                                    input_speed = mapped_speed;
+                             
+                                    sprite.speed = mapped_speed; 
+                                    sprite.show();
+                                    sprite.animate();
+                              
+                                }
+                                
+                                //the rotation of the x and y axes are each used to change the y coordinate of the symbols. Rotating the sensor along the y and x axes allows the player to move the symbols and try to align them 
+                                let symbol_coordinate2 = map(coors[1], -1,1,100,height);
+
+                                image(symbol1_2,20, symbol_coordinate2);
+
+                                let symbol_coordinate1 = map(coors[0], -1,1,height,100);
+
+                                image(symbol1_1,20, symbol_coordinate1);
+
+                                image(instructions,300,200);
+                                //remember to include socket.emit tin this section
+
+                                if(abs(symbol_coordinate1 - symbol_coordinate2)<170){
+                                    console.log("Matched symbol!");
+                                    //show the "close" word bubble if the two symbols are close to each other 
+                                    image(close, 300, 450);
+                                }
+                              
                             });
 
                        
