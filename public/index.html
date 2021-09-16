@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html>
+    <head>
+      
+       <!----<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/addons/p5.sound.min.js"></script>-->
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.0.3/socket.io.js"></script> 
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+        <!--<script src = "./../sprite.js"></script>-->
+   
+        <link rel="stylesheet" type="text/css" href="style.css">
+
+    </head>
+    <body>
+      
+
+       
+            <script>
+                        class Sprite {
+                            constructor(animation, x, y, speed) {
+                                this.x = x;
+                                this.y = y;
+                                this.animation = animation;
+                                this.w = this.animation[0].width;
+                                this.len = this.animation.length;
+                                this.speed = speed;
+                                this.index = 0;
+                            }
+        
+                            show() {
+                                let index = floor(this.index) % this.len;
+                                image(this.animation[index], this.x, this.y);
+                            }
+                            
+        
+                            animate() {
+                                this.index += this.speed;
+                                //this.x += this.speed * 15;
+                        
+                                if (this.x > width) {
+                                    this.x = -this.w;
+                                }
+                            }
+                        }
+
+
+                        let socket =io('ws://192.168.1.8:8080',{
+                            transports: ["websocket"],
+                            pingInterval: 60000,
+                            pingTimeout: 1000
+                        });
+
+                        //let socket = io.connect('http://192.168.1.8:8080');
+                   
+                  
+
+                        let spritesheet;
+                        let data;
+                        let animation = [];
+                        let sprites = [];
+
+                        let input_speed = 2;
+
+
+                        function preload(){
+                            spritedata = loadJSON('spritesheet_1.json');
+                            spritesheet = loadImage('spritesheet_1.png');
+
+                        }
+
+                        function setup(){
+
+                            
+                            createCanvas(600,900);
+                    
+
+
+                            background(220)
+                            fill(0, 102, 153);
+
+                            let frames = spritedata.frames;
+                            for (let i = 0; i < frames.length; i++) {
+                                let pos = frames[i].frame;
+                                let img = spritesheet.get(pos.x, pos.y, pos.w, pos.h);
+                                animation.push(img);
+                            }
+  
+                            for (let i = 0; i < animation.length; i++) {
+
+                                sprites[i] = new Sprite(animation, width*0.5-20, 360, 0.1);
+                            }
+
+                        
+                            socket.on('accel', accel =>{
+                            
+                                textAlign(LEFT);
+                                fill(0,0,0);
+                                rect(width*0.25-10, 50, 140,40);
+                                fill(0, 102, 153);
+                                text("Acceleration", width * 0.25, 60); 
+                                text(accel, width * 0.25, 80);
+                                
+                            
+                            });
+
+                            socket.on('incl', incl=>{
+                            
+                                textAlign(LEFT);
+                                fill(0,0,0);
+                                rect(width*0.25-10, 90, 140,40);
+                                fill(0, 102, 153);
+                                text("Inclination", width * 0.25, 100);
+                                text(incl, width * 0.25, 120);
+                                fill(0);
+
+
+
+                                //lerp color according to inclination
+                                value=incl;
+                                let mappedValue = map(value, -180, 180, 0, 255);
+                                console.log(mappedValue);
+
+                                fill(255,0,mappedValue);
+                                rect(10, 200, 180, 20, 10);
+
+                            });
+
+                            socket.on('orient', orient=>{
+
+                            
+                                textAlign(LEFT);
+                                fill(0,0,0);
+                                rect(width*0.25-10, 140, 140,40);
+                                fill(0, 102, 153);
+                                text("Orientation", width * 0.25, 150);
+                                text(orient, width * 0.25, 170);
+
+                            });
+
+                            socket.on('pitch', pitch=>{
+
+                                textAlign(LEFT);
+                                fill(0,0,0);
+                                rect(width*0.5-10, 50, 140,40);
+                                fill(0, 102, 153);
+                                text("Pitch", width * 0.5, 60);
+                                text(pitch, width * 0.5, 80);
+
+                            });
+
+                            socket.on('roll', roll=>{
+
+                                textAlign(LEFT);
+                                fill(0,0,0);
+                                rect(width*0.5-10, 90, 140,40);
+                                fill(0, 102, 153);
+                                text("Roll", width * 0.5, 100);
+                                text(roll, width * 0.5, 120);
+
+                            });
+
+                            
+                            socket.on('xPos', xPos =>{
+                            
+                                textAlign(LEFT);
+                                fill(0,0,0);
+                                rect(width*0.75-10, 50, 140,40);
+                                fill(0, 102, 153);
+                                text("X", width * 0.75, 60); 
+                                text(xPos, width * 0.75, 80);
+
+                                let value=xPos;
+                                let mappedValue = map(value, -1, 1, 20, width-110);
+                                console.log(mappedValue);
+                                fill(220);
+                                stroke(220);
+                                rect(0, 280, width, 55, 10);
+                                fill(20,255,20);
+                                rect(mappedValue, 280, 105, 55, 10);
+
+                                
+                            });
+
+                            socket.on('yPos', yPos=>{
+
+                                textAlign(LEFT);
+                                fill(0,0,0);
+                                rect(width*0.75-10, 90, 140,40);
+                                fill(0, 102, 153);
+                                text("Y", width * 0.75, 100);
+                                text(yPos, width * 0.75, 120);
+
+                                //let default_speed = 0.2;
+
+                            
+                                fill(220);
+                                rect(width*0.5-30, 360, 200,510);
+
+                                 
+                                for(let sprite of sprites){
+                                    let mapped_speed = map(yPos,-1,1,0.00001,0.2);
+                                    input_speed = mapped_speed;
+                                    console.log(mapped_speed);
+                                    sprite.speed = mapped_speed; 
+                                    sprite.show();
+                                    sprite.animate();
+                                    socket.emit('speed',input_speed );
+                                }
+
+                            });
+
+                            socket.on('zPos', zPos=>{
+                            
+                                textAlign(LEFT);
+                                fill(0,0,0);
+                                rect(width*0.75-10, 140, 140,40);
+                                fill(0, 102, 153);
+                                text("Z", width * 0.75, 150);
+                                text(zPos, width * 0.75, 170);
+
+                            });
+
+                       
+
+                        }
+
+            </script>
+          </body>
+
+    
+     
+       
+
+
+</html>

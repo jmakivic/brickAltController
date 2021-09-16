@@ -1,0 +1,29 @@
+FROM balenalib/raspberrypi3-node:10.18-build
+
+RUN apt-get update && apt-get dist-upgrade && apt-get install -y wget unzip
+
+RUN apt install python3
+
+WORKDIR /usr/src/app
+
+COPY . ./
+
+RUN wget https://github.com/joan2937/pigpio/archive/master.zip
+
+RUN unzip master.zip && cd pigpio-master && make && make install
+
+RUN npm install raspi-io
+
+RUN npm install johnny-five
+
+RUN npm install bindings
+
+RUN npm i socket.io
+
+RUN npm install express
+
+RUN npm rebuild
+
+CMD ["node", "webserver.js"]
+
+#CMD ["sleep", "infinity"]
